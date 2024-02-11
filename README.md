@@ -130,6 +130,6 @@ Bungee Pro is a closed-source commercial audio library built on Bungee's API and
     * Web AudioWorklet with SIMD128 Web Assembler
     * Arm 64-bit for Android, iOS and MacOS
     * x86-64 for Linux, Windows and MacOS
-* A ready-to-use Web Audio implementation ([try it](https://bungee-audio.pages.dev/BungeeWeb.html))
+* A ready-to-use Web Audio implementation ([try it](https://bungee-audio.pages.dev/bungee-web-demo.html))
 
 See the Bungee [web pages](https://bungee-audio.pages.dev/) for more information about Bungee Pro.
