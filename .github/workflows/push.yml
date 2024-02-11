@@ -1,0 +1,30 @@
+name: buuld
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛒 Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+          path: .
+
+      - name: 🛠️ Build
+        env:
+          CC: gcc-10
+          CXX: g++-10
+          CMAKE_BUILD_PARALLEL_LEVEL: 2
+          BUILD_TYPES: Release Debug
+        run: |
+          for BUILD_TYPE in ${BUILD_TYPES}; do \
+            cmake \
+              -S . \
+              -B build/${BUILD_TYPE} \
+              -DBUNGEE_SELF_TEST=2 \
+              -DCMAKE_BUILD_TYPE=${BUILD_TYPE}; \
+            cmake --build build/${BUILD_TYPE}; \
+          done

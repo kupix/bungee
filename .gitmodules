@@ -1,0 +1,12 @@
+[submodule "eigen"]
+	path = submodules/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+	shallow = true
+[submodule "kissfft"]
+	path = submodules/kissfft
+	url = https://github.com/mborgerding/kissfft
+	shallow = true
+[submodule "cxxopts"]
+	path = submodules/cxxopts
+	url = https://github.com/jarro2783/cxxopts.git
+	shallow = true
