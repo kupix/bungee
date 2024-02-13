@@ -22,7 +22,7 @@ struct Temporal
 
 		const StretchTime stretchTime(log2SynthesisHop, grain.analysis.hop, previous.analysis.hop);
 
-		BUNGEE_ASSERT1(grain.partials.back().valley == grain.validBinCount);
+		BUNGEE_ASSERT1(grain.partials.back().end == grain.validBinCount);
 
 		for (int i = 0; i < grain.partials.size(); ++i)
 		{
@@ -65,7 +65,7 @@ void synthesise(int log2SynthesisHop, Grain &grain, Grain &previous)
 		{
 			grain.rotation[n] += grain.delta[i];
 			BUNGEE_ASSERT1(!grain.passthrough || !grain.rotation[n]);
-		} while (++n < grain.partials[i].valley);
+		} while (++n < grain.partials[i].end);
 
 	BUNGEE_ASSERT2(!grain.passthrough || grain.rotation.topRows(grain.validBinCount).isZero());
 

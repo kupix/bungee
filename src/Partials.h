@@ -15,9 +15,11 @@ namespace Bungee::Partials {
 struct Partial
 {
 	int16_t peak;
-	int16_t valley;
+	int16_t end;
 };
 
 void enumerate(std::vector<Partial> &partials, int n, Eigen::Ref<Eigen::ArrayX<float>> energy);
+
+void suppressTransientPartials(std::vector<Partial> &partials, const Eigen::Ref<const Eigen::ArrayX<float>> energy, const Eigen::Ref<const Eigen::ArrayX<float>> previousEnergy);
 
 } // namespace Bungee::Partials

@@ -96,6 +96,9 @@ void Stretcher::Implementation::analyseGrain(const float *data, std::ptrdiff_t s
 		}
 
 		Partials::enumerate(grain.partials, grain.validBinCount, grain.energy);
+
+		if (grain.continuous)
+			Partials::suppressTransientPartials(grain.partials, grain.energy, grains[1].energy);
 	}
 }
 
