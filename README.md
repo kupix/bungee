@@ -12,7 +12,7 @@ Bungee is unique in its controllability, allowing continually changing pitch and
 
 ## Features
 
-* Simple, fast, with good quality audio output (hear some [comparisons](https://bungee-audio.pages.dev/compare.html) with other approaches)
+* Simple, fast, with good quality audio output (hear some [comparisons](https://bungee.parabolaresearch.com/compare.html) with other approaches)
 * Resonably low latency (of the order of 20ms for speed and pitch controls and 40ms from audio input to output)
 * Frequency-domain phase-vocoder-based algorithm
 * Modern C++ for clean and resilient code
@@ -123,13 +123,13 @@ See this repo's [.gitmodules](.gitmodules) for versioned links to these projects
 
 Bungee Pro is a closed-source commercial audio library built on Bungee's API and core philosophy. It uses novel algorithms for sharp and clear professional-grade audio and runs at least as fast as Bungee, thanks to platform-specific performance optimisations.
 
-[Listen to Bungee Pro](https://bungee-audio.pages.dev/compare.html) and consider licensing if you need:
+[Listen to Bungee Pro](https://bungee.parabolaresearch.com/compare.html) and consider licensing if you need:
 * Powerful, AI-enabled algorithms adaptive to all genres of speech, music and sound with subjective transparency up to infinite time stretch
 * Novel frequency- and time-domain processing for crisp transients and presevation of tonal envelope, vocal and instrumental timbre
 * Performance optimisations for:
     * Web AudioWorklet with SIMD128 Web Assembler
     * Arm 64-bit for Android, iOS and MacOS
     * x86-64 for Linux, Windows and MacOS
-* A ready-to-use Web Audio implementation ([try it](https://bungee-audio.pages.dev/bungee-web-demo.html))
+* A ready-to-use Web Audio implementation ([try it](https://bungee.parabolaresearch.com/bungee-web-demo.html))
 
-See the Bungee [web pages](https://bungee-audio.pages.dev/) for more information about Bungee Pro.
+See the Bungee [web pages](https://bungee.parabolaresearch.com/) for more information about Bungee Pro.
