@@ -21,7 +21,11 @@ struct Stretcher::Implementation
 
 	Implementation(SampleRates sampleRates, int channelCount);
 
+	void preroll(Request &request) const;
+
 	InputChunk specifyGrain(const Request &request);
+
+	void next(Request &request) const;
 
 	void analyseGrain(const float *inputAudio, std::ptrdiff_t stride);
 

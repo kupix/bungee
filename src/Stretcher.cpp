@@ -23,6 +23,11 @@ InputChunk Stretcher::specifyGrain(const Request &request)
 	return state->specifyGrain(request);
 }
 
+void Stretcher::next(Request &request) const
+{
+	state->next(request);
+}
+
 void Stretcher::analyseGrain(const float *data, intptr_t channelStride)
 {
 	state->analyseGrain(data, channelStride);
@@ -38,11 +43,9 @@ bool Stretcher::isFlushed() const
 	return state->grains.flushed();
 }
 
-void Stretcher::defaultRequest(Request &request)
+void Stretcher::preroll(Request &request) const
 {
-	request = {};
-	request.position = request.speed = std::numeric_limits<float>::quiet_NaN();
-	request.pitch = 1.;
+	state->preroll(request);
 }
 
 Stretcher::Implementation::Implementation(SampleRates sampleRates, int channelCount) :
@@ -56,6 +59,12 @@ Stretcher::Implementation::Implementation(SampleRates sampleRates, int channelCo
 		grain = std::make_unique<Grain>(log2SynthesisHop, channelCount);
 }
 
+void Stretcher::Implementation::preroll(Request &request) const
+{
+	request.position -= 4. * Grain::calculateHop(log2SynthesisHop, sampleRates, request);
+	request.reset = true;
+}
+
 InputChunk Stretcher::Implementation::specifyGrain(const Request &request)
 {
 	const Assert::FloatingPointExceptions floatingPointExceptions(0);
@@ -65,6 +74,15 @@ InputChunk Stretcher::Implementation::specifyGrain(const Request &request)
 	auto &grain = grains[0];
 	auto &previous = grains[1];
 	return grain.specify(request, previous, sampleRates, log2SynthesisHop);
+}
+
+void Stretcher::Implementation::next(Request &request) const
+{
+	if (!std::isnan(request.speed) && !std::isnan(request.position))
+	{
+		request.position += Grain::calculateHop(log2SynthesisHop, sampleRates, request);
+		request.reset = false;
+	}
 }
 
 void Stretcher::Implementation::analyseGrain(const float *data, std::ptrdiff_t stride)

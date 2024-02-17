@@ -96,30 +96,15 @@ struct Processor
 	std::vector<float> inputBuffer;
 	std::ifstream inputFile;
 	std::ofstream outputFile;
-	double hop;
 
-	Processor(const cxxopts::ParseResult &parameters, int synthesisHop, Request &request) :
+	Processor(const cxxopts::ParseResult &parameters, Request &request) :
 		inputFile(parameters["input"].as<std::string>(), std::ios::binary)
 	{
-		wavHeader.resize(44);
-		if (!inputFile.read(wavHeader.data(), wavHeader.size()))
-			fail("Please check your input file: there was a problem reading its header");
+		if (!inputFile)
+			fail("Please check your input file: could not open it");
 
-		sampleRates.input = read<uint32_t>(&wavHeader[24]);
-		if (sampleRates.input < 8000 || sampleRates.input > 192000)
-			fail("Please check your input file: it seems not to be a compatible WAV file (unexpected sample rate)");
-
-		const int decimation = parameters["decimation"].as<int>();
-		if ((decimation & (decimation - 1)) || decimation <= 0)
-			fail("Input sample rate decimation must be a positive power of two");
-
-		if (parameters["output-rate"].has_default())
-			sampleRates.output = sampleRates.input;
-		else
-			sampleRates.output = parameters["output-rate"].as<int>();
-
-		if (sampleRates.output < 8000 || sampleRates.output > 192000)
-			fail("Output sample rate must be in the range [8000, 192000] kHz");
+		wavHeader.resize(20);
+		inputFile.read(wavHeader.data(), wavHeader.size());
 
 		if (read<uint32_t>(&wavHeader[0]) != read<uint32_t>("RIFF"))
 			fail("Please check your input file: it seems not to be a compatible WAV file (no 'RIFF')");
@@ -127,26 +112,45 @@ struct Processor
 			fail("Please check your input file: it seems not to be a compatible WAV file (no 'WAVE')");
 		if (read<uint32_t>(&wavHeader[12]) != read<uint32_t>("fmt "))
 			fail("Please check your input file: it seems not to be a compatible WAV file (no 'fmt ')");
-		if (read<uint32_t>(&wavHeader[16]) != 16)
-			fail("Please check your input file: it seems not to be a compatible WAV file (format length not 16)'");
+		if (read<uint32_t>(&wavHeader[16]) < 16)
+			fail("Please check your input file: it seems not to be a compatible WAV file (format length less than 16)'");
 
-		channelCount = read<uint16_t>(&wavHeader[22]);
-		bitsPerSample = read<uint16_t>(&wavHeader[34]);
-		if (!channelCount)
-			fail("Please check your input file: it seems not to be a compatible WAV file (zero channels)");
-		if (read<int32_t>(&wavHeader[28]) != sampleRates.input * channelCount * bitsPerSample / 8)
-			fail("Please check your input file: it seems not to be a compatible WAV file (inconsistent at position 28)");
-		if (read<uint16_t>(&wavHeader[32]) != channelCount * bitsPerSample / 8)
-			fail("Please check your input file: it seems not to be a compatible WAV file (inconsistent at position 32)'");
-
+		int subchunkCount = 0;
 		while (read<uint32_t>(&wavHeader[wavHeader.size() - 8]) != read<uint32_t>("data"))
 		{
 			const auto len = read<uint32_t>(&wavHeader[wavHeader.size() - 4]) + 8;
 			wavHeader.resize(wavHeader.size() + len);
 			if (!inputFile.read(wavHeader.data() + wavHeader.size() - len, len))
-				fail("Please check your input file: there was a problem reading its header");
-		}
+				fail("Please check your input file: there was a problem reading one of its chunks");
 
+			if (subchunkCount++ == 0)
+			{
+				sampleRates.input = read<uint32_t>(&wavHeader[24]);
+				if (sampleRates.input < 8000 || sampleRates.input > 192000)
+					fail("Please check your input file: it seems not to be a compatible WAV file (unexpected sample rate)");
+
+				const int decimation = parameters["decimation"].as<int>();
+				if ((decimation & (decimation - 1)) || decimation <= 0)
+					fail("Input sample rate decimation must be a positive power of two");
+
+				if (parameters["output-rate"].has_default())
+					sampleRates.output = sampleRates.input;
+				else
+					sampleRates.output = parameters["output-rate"].as<int>();
+
+				if (sampleRates.output < 8000 || sampleRates.output > 192000)
+					fail("Output sample rate must be in the range [8000, 192000] kHz");
+
+				channelCount = read<uint16_t>(&wavHeader[22]);
+				bitsPerSample = read<uint16_t>(&wavHeader[34]);
+				if (!channelCount)
+					fail("Please check your input file: it seems not to be a compatible WAV file (zero channels)");
+				if (read<int32_t>(&wavHeader[28]) != sampleRates.input * channelCount * bitsPerSample / 8)
+					fail("Please check your input file: it seems not to be a compatible WAV file (inconsistent at position 28)");
+				if (read<uint16_t>(&wavHeader[32]) != channelCount * bitsPerSample / 8)
+					fail("Please check your input file: it seems not to be a compatible WAV file (inconsistent at position 32)'");
+			}
+		}
 		wavData.resize(read<uint32_t>(&wavHeader[wavHeader.size() - 4]));
 		if (!inputFile.read(wavData.data(), wavData.size()))
 			fail("Please check your input file: there was a problem reading its audio data");
@@ -181,8 +185,6 @@ struct Processor
 		const auto nOutput = int(inputFrameCount / std::max(.01, fabs(request.speed)) * sampleRates.output / sampleRates.input);
 		wavData.resize(nOutput * channelCount * bitsPerSample / 8);
 
-		hop = synthesisHop * request.speed / std::min(1., request.pitch);
-
 		restart(request);
 	}
 
@@ -190,26 +192,21 @@ struct Processor
 	{
 		o = wavData.begin();
 
-		constexpr auto runIn = 4;
-		request.position = -runIn * hop;
-		if (hop < 0)
-			request.position += inputFrameCount - 1;
-
-		request.reset = true;
+		if (request.speed < 0)
+			request.position = inputFrameCount - 1;
+		else
+			request.position = 0.;
 	}
 
-	bool next(const InputChunk &inputChunk, OutputChunk outputChunk, Request &request)
+	bool write(OutputChunk outputChunk)
 	{
-		request.position += request.speed * inputChunk.unitHop;
-		request.reset = false;
-
 		double position[2];
 		position[OutputChunk::begin] = outputChunk.request[OutputChunk::begin]->position;
 		position[OutputChunk::end] = outputChunk.request[OutputChunk::end]->position;
 
 		if (!std::isnan(position[OutputChunk::begin]))
 		{
-			double nPrerollInput = hop < 0. ? position[OutputChunk::begin] - inputFrameCount + 1 : -position[OutputChunk::begin];
+			double nPrerollInput = outputChunk.request[OutputChunk::begin]->speed < 0. ? position[OutputChunk::begin] - inputFrameCount + 1 : -position[OutputChunk::begin];
 			nPrerollInput = std::max<int>(0., std::round(nPrerollInput));
 
 			const int nPrerollOutput = std::round(nPrerollInput * (outputChunk.frameCount / std::abs(position[OutputChunk::end] - position[OutputChunk::begin])));

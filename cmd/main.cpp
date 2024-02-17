@@ -15,9 +15,12 @@ int main(int argc, const char *argv[])
 
 	CommandLine::Options options;
 	CommandLine::Parameters parameters{options, argc, argv, request};
-	CommandLine::Processor processor{parameters, 1 << log2SynthesisHop, request};
+	CommandLine::Processor processor{parameters, request};
 
 	Stretcher stretcher(processor.sampleRates, processor.channelCount);
+
+	processor.restart(request);
+	stretcher.preroll(request);
 
 	for (bool done = false; !done;)
 	{
@@ -28,7 +31,9 @@ int main(int argc, const char *argv[])
 		OutputChunk outputChunk;
 		stretcher.synthesiseGrain(outputChunk);
 
-		done = processor.next(inputChunk, outputChunk, request);
+		stretcher.next(request);
+
+		done = processor.write(outputChunk);
 	}
 
 	processor.writeOutputFile();

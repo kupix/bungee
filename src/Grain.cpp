@@ -6,6 +6,8 @@
 
 #include "bungee/Bungee.h"
 
+#include <limits>
+
 namespace Bungee {
 
 Grain::Grain(int log2SynthesisHop, int channelCount) :
@@ -13,13 +15,69 @@ Grain::Grain(int log2SynthesisHop, int channelCount) :
 	segment(log2SynthesisHop, channelCount),
 	inputResampled(1 << log2TransformLength, channelCount)
 {
-	Stretcher::defaultRequest(request);
+	request.position = request.speed = std::numeric_limits<float>::quiet_NaN();
+	request.pitch = 1.;
 	Fourier::resize<true>(log2TransformLength, channelCount, transformed);
 	Fourier::resize<true>(log2TransformLength, 1, phase);
 	Fourier::resize<true>(log2TransformLength, 1, energy);
 	Fourier::resize<true>(log2TransformLength, 1, rotation);
 	Fourier::resize<true>(log2TransformLength, 1, delta);
 	partials.reserve(1 << log2TransformLength);
+}
+
+static double setupResample(Resample::Operation &resampleOperationInput, Resample::Operation &resampleOperationOutput, const SampleRates &sampleRates, ResampleMode resampleMode, double pitch)
+{
+	using namespace Resample;
+
+	const double resampleRatio = pitch * sampleRates.input / sampleRates.output;
+	resampleOperationInput.ratio = 1.f / resampleRatio;
+	resampleOperationOutput.ratio = resampleRatio;
+
+	if constexpr (true)
+	{
+		resampleOperationInput.function = &resample<VariableToFixed, Bilinear>;
+		resampleOperationOutput.function = &resample<FixedToVariable, Bilinear>;
+	}
+	else
+	{
+		resampleOperationInput.function = &resample<VariableToFixed, Nearest>;
+		resampleOperationOutput.function = &resample<FixedToVariable, Nearest>;
+	}
+
+	if (resampleMode == ResampleMode::forceOut)
+		resampleOperationInput.function = nullptr;
+	else if (resampleMode == ResampleMode::forceIn)
+		resampleOperationOutput.function = nullptr;
+	else if (resampleRatio == 1.)
+		resampleOperationInput.function = resampleOperationOutput.function = nullptr;
+	else if (resampleMode == ResampleMode::autoIn)
+		resampleOperationOutput.function = nullptr;
+	else if (resampleMode == ResampleMode::autoOut)
+		resampleOperationInput.function = nullptr;
+	else if (resampleMode == ResampleMode::autoInOut && resampleRatio > 1.)
+		resampleOperationOutput.function = nullptr;
+	else if (resampleMode == ResampleMode::autoInOut && resampleRatio < 1.)
+		resampleOperationInput.function = nullptr;
+	else
+	{
+		BUNGEE_ASSERT1(false);
+		resampleOperationInput.function = nullptr;
+	}
+
+	if (!resampleOperationInput.function)
+		resampleOperationInput.ratio = 1.f;
+	if (!resampleOperationOutput.function)
+		resampleOperationOutput.ratio = 1.f;
+
+	return 1. / resampleOperationOutput.ratio;
+}
+
+double Grain::calculateHop(int log2SynthesisHop, const SampleRates &sampleRates, const Request &request)
+{
+	Resample::Operation resampleOperationInput;
+	Resample::Operation resampleOperationOutput;
+	const double unitHop = (1 << log2SynthesisHop) * setupResample(resampleOperationInput, resampleOperationOutput, sampleRates, request.resampleMode, request.pitch);
+	return unitHop * request.speed;
 }
 
 InputChunk Grain::specify(const Request &r, Grain &previous, SampleRates sampleRates, int log2SynthesisHop)
@@ -29,54 +87,11 @@ InputChunk Grain::specify(const Request &r, Grain &previous, SampleRates sampleR
 
 	const Assert::FloatingPointExceptions floatingPointExceptions(FE_INEXACT);
 
-	{
-		using namespace Resample;
+	const auto unitHop = (1 << log2SynthesisHop) * setupResample(resampleOperationInput, resampleOperationOutput, sampleRates, request.resampleMode, request.pitch);
 
-		const double resampleRatio = request.pitch * sampleRates.input / sampleRates.output;
-		resampleOperationInput.ratio = 1.f / resampleRatio;
-		resampleOperationOutput.ratio = resampleRatio;
-
-		if constexpr (true)
-		{
-			resampleOperationInput.function = &resample<VariableToFixed, Bilinear>;
-			resampleOperationOutput.function = &resample<FixedToVariable, Bilinear>;
-		}
-		else
-		{
-			resampleOperationInput.function = &resample<VariableToFixed, Nearest>;
-			resampleOperationOutput.function = &resample<FixedToVariable, Nearest>;
-		}
-
-		if (request.resampleMode == ResampleMode::forceOut)
-			resampleOperationInput.function = nullptr;
-		else if (request.resampleMode == ResampleMode::forceIn)
-			resampleOperationOutput.function = nullptr;
-		else if (resampleRatio == 1.)
-			resampleOperationInput.function = resampleOperationOutput.function = nullptr;
-		else if (request.resampleMode == ResampleMode::autoIn)
-			resampleOperationOutput.function = nullptr;
-		else if (request.resampleMode == ResampleMode::autoOut)
-			resampleOperationInput.function = nullptr;
-		else if (request.resampleMode == ResampleMode::autoInOut && resampleRatio > 1.)
-			resampleOperationOutput.function = nullptr;
-		else if (request.resampleMode == ResampleMode::autoInOut && resampleRatio < 1.)
-			resampleOperationInput.function = nullptr;
-		else
-		{
-			BUNGEE_ASSERT1(false);
-			resampleOperationInput.function = nullptr;
-		}
-
-		if (!resampleOperationInput.function)
-			resampleOperationInput.ratio = 1.f;
-		if (!resampleOperationOutput.function)
-			resampleOperationOutput.ratio = 1.f;
-	}
-
-	inputChunk.unitHop = (1 << log2SynthesisHop) / resampleOperationOutput.ratio;
 	requestHop = request.position - previous.request.position;
 	if (std::isnan(requestHop) || request.reset)
-		requestHop = request.speed * inputChunk.unitHop;
+		requestHop = request.speed * unitHop;
 
 	analysis.hopIdeal = requestHop * resampleOperationInput.ratio;
 

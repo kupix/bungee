@@ -18,13 +18,15 @@ struct Request
 	// NaN signifies an invalid grain that produces no audio output and may be used for flushing.
 	double position;
 
-	// Only used when inter-grain hop can't be calculated by comparing position of each grain
+	// Output audio speed. Value of 1 means speed should be unchanged relative to the input audio.
+	// Used by Stretcher's internal algorithms only when it's not possible to determine speed by
+	// subtracting Request::position of previous grain from Request::position of current grain.
 	double speed;
 
 	// Adjustment as a frequency multiplier with a value of 1 meaning no pitch adjustment
 	double pitch;
 
-	// Set to have the stretcher reset and restart on this grain.
+	// Set to have the stretcher forget all previous grains and restart on this grain.
 	bool reset;
 
 #define X_BEGIN(Type, type) Type##Mode type##Mode;
@@ -41,9 +43,6 @@ struct InputChunk
 {
 	// Sample positions relative to the start of the audio track
 	int begin, end;
-
-	// Add unitHop to Request::position for 1x playback speed. Adjust according to desired speed.
-	double unitHop;
 };
 
 // Describes a chunk of audio output
@@ -62,7 +61,6 @@ struct SampleRates
 {
 	int input;
 	int output;
-	int log2DecimationFactor;
 };
 
 struct Configuration;
@@ -76,19 +74,27 @@ struct Stretcher
 
 	~Stretcher();
 
-	static void defaultRequest(Request &request);
+	// This function adjusts request.position so that the stretcher has a run in of a few
+	// grains before hitting the requested position. Without preroll, the first milliseconds
+	// of audio might sound weak or initial transients might be lost.
+	void preroll(Request &request) const;
 
-	// Specify the next grain of audio and compute the necessary segment of input audio
+	// This function prepares request.position and request.reset for the subsequent grain.
+	// Typically called within a granular loop where playback at constant request.speed is desired.
+	void next(Request &request) const;
+
+	// Specify a grain of audio and compute the necessary segment of input audio.
 	// After calling this function, call analyseGrain.
 	InputChunk specifyGrain(const Request &request);
 
-	// Perform first steps of processing the grain. The audio data should correspond to the range
+	// Begins processing the grain. The audio data should correspond to the range
 	// specified by specifyGrain's return value. After calling this function, call synthesiseGrain.
 	void analyseGrain(const float *data, intptr_t channelStride);
 
 	// Complete processing of the grain of audio that was previously set up with calls to specifyGrain and analyseGrain.
 	void synthesiseGrain(OutputChunk &outputChunk);
 
+	// Returns true if every grain in the stretcher's pipeline is invalid (its Request::position was NaN).
 	bool isFlushed() const;
 };
 
