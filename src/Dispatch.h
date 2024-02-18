@@ -7,17 +7,17 @@
 
 namespace Bungee {
 
-template <template <int> class Target, int n>
+template <class Target, int n>
 struct Dispatch
 {
-	typedef decltype(&Target<0>::receive) FunctionPointer;
+	typedef decltype(&Target::template special<0>) FunctionPointer;
 
 	std::array<FunctionPointer, n> table;
 
-	template <template <int> class T, int i = 0>
+	template <class T, int i = 0>
 	inline constexpr void populateTable()
 	{
-		table[i] = &T<i>::receive;
+		table[i] = &T::template special<i>;
 		if constexpr (i + 1 < n)
 			populateTable<T, i + 1>();
 	}

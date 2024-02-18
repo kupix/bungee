@@ -25,8 +25,8 @@ Input::Input(int log2SynthesisHop, int channelCount) :
 int Input::applyAnalysisWindow(const Eigen::Ref<const Eigen::ArrayXXf> &input)
 {
 	const auto half = analysisWindowBasic.rows() / 2;
-	Window::Apply<0>::receive(analysisWindowBasic.head(half), input.bottomRows(input.rows() / 2).topRows(half), windowedInput.topRows(half));
-	Window::Apply<0>::receive(analysisWindowBasic.tail(half), input.topRows(input.rows() / 2).bottomRows(half), windowedInput.bottomRows(half));
+	Window::Apply::special<false>(analysisWindowBasic.head(half), input.bottomRows(input.rows() / 2).topRows(half), windowedInput.topRows(half));
+	Window::Apply::special<false>(analysisWindowBasic.tail(half), input.topRows(input.rows() / 2).bottomRows(half), windowedInput.bottomRows(half));
 	return Bungee::log2(windowedInput.rows());
 }
 

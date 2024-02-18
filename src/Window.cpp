@@ -27,8 +27,8 @@ Eigen::ArrayXf fromFrequencyDomainCoefficients(int log2Size, float gain, std::in
 	return window;
 }
 
-template <int index>
-void Apply<index>::receive(const Eigen::Ref<const Eigen::ArrayXf> &window, const Eigen::Ref<const Eigen::ArrayXXf> &input, Eigen::Ref<Eigen::ArrayXXf> output)
+template <bool add>
+void Apply::special(const Eigen::Ref<const Eigen::ArrayXf> &window, const Eigen::Ref<const Eigen::ArrayXXf> &input, Eigen::Ref<Eigen::ArrayXXf> output)
 {
 	if constexpr (add)
 		output += input.colwise() * window;
@@ -36,7 +36,7 @@ void Apply<index>::receive(const Eigen::Ref<const Eigen::ArrayXf> &window, const
 		output = input.colwise() * window;
 }
 
-template struct Apply<0>;
-template struct Apply<1>;
+template void Apply::special<false>(const Eigen::Ref<const Eigen::ArrayXf> &window, const Eigen::Ref<const Eigen::ArrayXXf> &input, Eigen::Ref<Eigen::ArrayXXf> output);
+template void Apply::special<true>(const Eigen::Ref<const Eigen::ArrayXf> &window, const Eigen::Ref<const Eigen::ArrayXXf> &input, Eigen::Ref<Eigen::ArrayXXf> output);
 
 } // namespace Bungee::Window

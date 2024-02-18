@@ -13,10 +13,10 @@ namespace Bungee::Synthesis {
 static constexpr int flagReverse0 = 1 << 0;
 static constexpr int flagReverse1 = 1 << 1;
 
-template <int index>
 struct Temporal
 {
-	static void receive(int log2SynthesisHop, Grain &grain, Grain &previous)
+	template <int index>
+	static void special(int log2SynthesisHop, Grain &grain, Grain &previous)
 	{
 		typedef Stretch::Time<!!(index & flagReverse0), !!(index & flagReverse1)> StretchTime;
 
