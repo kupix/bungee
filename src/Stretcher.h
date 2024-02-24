@@ -6,26 +6,20 @@
 #include "Grains.h"
 #include "Input.h"
 #include "Output.h"
+#include "Timing.h"
 
 namespace Bungee {
 
-struct Stretcher::Implementation
+struct Stretcher::Implementation :
+	Timing
 {
-	int log2SynthesisHop;
-	SampleRates sampleRates;
 	Input input;
 	Grains grains;
 	Output output;
 
-	static int maxFrameCount(SampleRates sampleRates);
-
 	Implementation(SampleRates sampleRates, int channelCount);
 
-	void preroll(Request &request) const;
-
 	InputChunk specifyGrain(const Request &request);
-
-	void next(Request &request) const;
 
 	void analyseGrain(const float *inputAudio, std::ptrdiff_t stride);
 

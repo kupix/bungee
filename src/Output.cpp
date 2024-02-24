@@ -7,13 +7,6 @@
 
 namespace Bungee {
 
-int Output::maxFrameCount(int log2SynthesisHop, SampleRates sampleRates)
-{
-	static constexpr auto maxPitchOctaves = 2;
-	auto maxResample = (sampleRates.input << (maxPitchOctaves + log2SynthesisHop)) / sampleRates.output;
-	return maxResample + 1;
-}
-
 Output::Output(int log2SynthesisHop, int channelCount, int maxOutputChunkSize, float windowGain, std::initializer_list<float> windowCoefficients) :
 	synthesisWindow{Window::fromFrequencyDomainCoefficients(log2SynthesisHop + 2, windowGain, windowCoefficients)},
 	inverseTransformed(8 << log2SynthesisHop, channelCount),
@@ -55,8 +48,8 @@ void Output::applySynthesisWindow(int log2SynthesisHop, Grains &grains, const Ei
 	}
 
 	grains[2].segment.needsResample =
-		grains[1].resampleOperationOutput.function ||
-		grains[0].resampleOperationOutput.function;
+		grains[1].resampleOperations.output.function ||
+		grains[0].resampleOperations.output.function;
 }
 
 Output::Segment::Segment(int log2FrameCount, int channelCount) :
@@ -107,6 +100,9 @@ OutputChunk Output::Segment::resample(float &resampleOffset, Resample::Operation
 		resampleOperationEnd.ratio = 1.f;
 		resampleOperationEnd.function = resampleOperationBegin.function;
 	}
+
+	BUNGEE_ASSERT1(resampleOperationBegin.ratio != 0.f);
+	BUNGEE_ASSERT1(resampleOperationEnd.ratio != 0.f);
 
 	if (resampleOperationEnd.function)
 	{

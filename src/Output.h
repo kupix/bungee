@@ -25,8 +25,6 @@ struct Output
 	float resampleOffset = 0.f;
 	Window::DispatchApply dispatchApply;
 
-	static int maxFrameCount(int log2SynthesisHop, SampleRates sampleRates);
-
 	Output(int log2SynthesisHop, int channelCount, int maxOutputChunkSize, float windowGain, std::initializer_list<float> windowCoefficients);
 
 	void applySynthesisWindow(int log2SynthesisHop, Grains &grains, const Eigen::Ref<const Eigen::ArrayXf> &window);

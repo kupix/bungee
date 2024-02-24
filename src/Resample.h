@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Assert.h"
+#include "bungee/Bungee.h"
 
 #include <Eigen/Dense>
 
@@ -156,7 +157,11 @@ inline int resample(Padded &fixedBuffer, float &fixedBufferOffset, Ref variableB
 	else
 		resampleInner<Mode, Interpolation, false>(variableFrameCount, fixedBuffer, fixedBufferOffset, variableBuffer, ratioBegin, ratioEnd);
 
-	BUNGEE_ASSERT1(truncate || std::abs(fixedBufferOffset) < (alignEnd ? 1e-2f : (ratioBegin + ratioEnd) * 0.3f));
+	if (!(truncate || std::abs(fixedBufferOffset) < (alignEnd ? 1e-2f : (ratioBegin + ratioEnd) * 0.3f)))
+	{
+		BUNGEE_ASSERT1(!"resample landed badly");
+		fixedBufferOffset = 0.f;
+	}
 
 	return variableFrameCount;
 }
@@ -167,6 +172,56 @@ struct Operation
 {
 	Function function;
 	float ratio;
+};
+
+struct Operations
+{
+	Operation input, output;
+
+	double setup(const SampleRates &sampleRates, ResampleMode resampleMode, double pitch)
+	{
+		const double resampleRatio = pitch * sampleRates.input / sampleRates.output;
+		input.ratio = 1.f / resampleRatio;
+		output.ratio = resampleRatio;
+
+		if constexpr (true)
+		{
+			input.function = &resample<VariableToFixed, Bilinear>;
+			output.function = &resample<FixedToVariable, Bilinear>;
+		}
+		else
+		{
+			input.function = &resample<VariableToFixed, Nearest>;
+			output.function = &resample<FixedToVariable, Nearest>;
+		}
+
+		if (resampleMode == ResampleMode::forceOut)
+			input.function = nullptr;
+		else if (resampleMode == ResampleMode::forceIn)
+			output.function = nullptr;
+		else if (resampleRatio == 1.)
+			input.function = output.function = nullptr;
+		else if (resampleMode == ResampleMode::autoIn)
+			output.function = nullptr;
+		else if (resampleMode == ResampleMode::autoOut)
+			input.function = nullptr;
+		else if (resampleMode == ResampleMode::autoInOut && resampleRatio > 1.)
+			output.function = nullptr;
+		else if (resampleMode == ResampleMode::autoInOut && resampleRatio < 1.)
+			input.function = nullptr;
+		else
+		{
+			BUNGEE_ASSERT1(false);
+			input.function = nullptr;
+		}
+
+		if (!input.function)
+			input.ratio = 1.f;
+		if (!output.function)
+			output.ratio = 1.f;
+
+		return ((double)sampleRates.input / sampleRates.output) / output.ratio;
+	}
 };
 
 } // namespace Bungee::Resample

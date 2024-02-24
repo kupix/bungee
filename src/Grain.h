@@ -42,8 +42,7 @@ struct Grain
 	int passthrough{};
 	int validBinCount{};
 
-	Resample::Operation resampleOperationInput{};
-	Resample::Operation resampleOperationOutput{};
+	Resample::Operations resampleOperations{};
 
 	InputChunk inputChunk{};
 	Analysis analysis{};
@@ -59,8 +58,6 @@ struct Grain
 	Output::Segment segment;
 
 	Grain(int log2SynthesisHop, int channelCount);
-
-	static double calculateHop(int log2SynthesisHop, const SampleRates &sampleRates, const Request &request);
 
 	InputChunk specify(const Request &request, Grain &previous, SampleRates sampleRates, int log2SynthesisHop);
 

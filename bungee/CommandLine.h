@@ -37,8 +37,7 @@ struct Options :
 			("output", "output WAV filename", cxxopts::value<std::string>()) //
 			;
 		add_options(helpGroups.emplace_back("Sample rate")) //
-			("decimation", "input sample rate decimation (power of two)", cxxopts::value<int>()->default_value("1")) //
-			("output-rate", "output sample rate, Hz", cxxopts::value<std::string>()->default_value("input sample rate")) //
+			("output-rate", "output sample rate, Hz, or 0 to match input sample rate", cxxopts::value<int>()->default_value("0")) //
 			;
 		add_options(helpGroups.emplace_back("Stretch")) //
 			("s,speed", "output speed as multiple of input speed", cxxopts::value<double>()->default_value("1")) //
@@ -128,10 +127,6 @@ struct Processor
 				sampleRates.input = read<uint32_t>(&wavHeader[24]);
 				if (sampleRates.input < 8000 || sampleRates.input > 192000)
 					fail("Please check your input file: it seems not to be a compatible WAV file (unexpected sample rate)");
-
-				const int decimation = parameters["decimation"].as<int>();
-				if ((decimation & (decimation - 1)) || decimation <= 0)
-					fail("Input sample rate decimation must be a positive power of two");
 
 				if (parameters["output-rate"].has_default())
 					sampleRates.output = sampleRates.input;

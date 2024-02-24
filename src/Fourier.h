@@ -46,17 +46,17 @@ inline float uninitialisedValue<float>()
 }
 
 template <bool frequencyDomain, class T>
-inline void resize(int log2TransformLength, int channelCount, T &array)
+inline void resize(int log2TransformLength, int channelCount, T &array, int extra = 0)
 {
 	typedef typename T::Scalar Scalar;
 	if constexpr (frequencyDomain)
 	{
 		auto pad = std::max<int>(1, EIGEN_DEFAULT_ALIGN_BYTES / std::min<int>(4, sizeof(Scalar)));
-		array.resize(binCount(log2TransformLength) - 1 + pad, channelCount);
+		array.resize(binCount(log2TransformLength) - 1 + pad + extra, channelCount);
 	}
 	else
 	{
-		array.resize(transformLength(log2TransformLength), channelCount);
+		array.resize(transformLength(log2TransformLength) + extra, channelCount);
 	}
 
 	if constexpr (Assert::level)

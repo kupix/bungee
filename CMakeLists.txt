@@ -16,8 +16,10 @@ add_library(libbungee STATIC
   src/Input.cpp
   src/Output.cpp
   src/Partials.cpp
+  src/Resample.cpp
   src/Stretch.cpp
   src/Stretcher.cpp
+  src/Timing.cpp
   src/Window.cpp
   src/Assert.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)

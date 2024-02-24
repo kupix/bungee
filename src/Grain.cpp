@@ -25,61 +25,6 @@ Grain::Grain(int log2SynthesisHop, int channelCount) :
 	partials.reserve(1 << log2TransformLength);
 }
 
-static double setupResample(Resample::Operation &resampleOperationInput, Resample::Operation &resampleOperationOutput, const SampleRates &sampleRates, ResampleMode resampleMode, double pitch)
-{
-	using namespace Resample;
-
-	const double resampleRatio = pitch * sampleRates.input / sampleRates.output;
-	resampleOperationInput.ratio = 1.f / resampleRatio;
-	resampleOperationOutput.ratio = resampleRatio;
-
-	if constexpr (true)
-	{
-		resampleOperationInput.function = &resample<VariableToFixed, Bilinear>;
-		resampleOperationOutput.function = &resample<FixedToVariable, Bilinear>;
-	}
-	else
-	{
-		resampleOperationInput.function = &resample<VariableToFixed, Nearest>;
-		resampleOperationOutput.function = &resample<FixedToVariable, Nearest>;
-	}
-
-	if (resampleMode == ResampleMode::forceOut)
-		resampleOperationInput.function = nullptr;
-	else if (resampleMode == ResampleMode::forceIn)
-		resampleOperationOutput.function = nullptr;
-	else if (resampleRatio == 1.)
-		resampleOperationInput.function = resampleOperationOutput.function = nullptr;
-	else if (resampleMode == ResampleMode::autoIn)
-		resampleOperationOutput.function = nullptr;
-	else if (resampleMode == ResampleMode::autoOut)
-		resampleOperationInput.function = nullptr;
-	else if (resampleMode == ResampleMode::autoInOut && resampleRatio > 1.)
-		resampleOperationOutput.function = nullptr;
-	else if (resampleMode == ResampleMode::autoInOut && resampleRatio < 1.)
-		resampleOperationInput.function = nullptr;
-	else
-	{
-		BUNGEE_ASSERT1(false);
-		resampleOperationInput.function = nullptr;
-	}
-
-	if (!resampleOperationInput.function)
-		resampleOperationInput.ratio = 1.f;
-	if (!resampleOperationOutput.function)
-		resampleOperationOutput.ratio = 1.f;
-
-	return 1. / resampleOperationOutput.ratio;
-}
-
-double Grain::calculateHop(int log2SynthesisHop, const SampleRates &sampleRates, const Request &request)
-{
-	Resample::Operation resampleOperationInput;
-	Resample::Operation resampleOperationOutput;
-	const double unitHop = (1 << log2SynthesisHop) * setupResample(resampleOperationInput, resampleOperationOutput, sampleRates, request.resampleMode, request.pitch);
-	return unitHop * request.speed;
-}
-
 InputChunk Grain::specify(const Request &r, Grain &previous, SampleRates sampleRates, int log2SynthesisHop)
 {
 	request = r;
@@ -87,13 +32,13 @@ InputChunk Grain::specify(const Request &r, Grain &previous, SampleRates sampleR
 
 	const Assert::FloatingPointExceptions floatingPointExceptions(FE_INEXACT);
 
-	const auto unitHop = (1 << log2SynthesisHop) * setupResample(resampleOperationInput, resampleOperationOutput, sampleRates, request.resampleMode, request.pitch);
+	const auto unitHop = (1 << log2SynthesisHop) * resampleOperations.setup(sampleRates, request.resampleMode, request.pitch);
 
 	requestHop = request.position - previous.request.position;
 	if (std::isnan(requestHop) || request.reset)
 		requestHop = request.speed * unitHop;
 
-	analysis.hopIdeal = requestHop * resampleOperationInput.ratio;
+	analysis.hopIdeal = requestHop * resampleOperations.input.ratio;
 
 	continuous = !request.reset && !std::isnan(previous.request.position);
 	if (continuous)
@@ -121,8 +66,8 @@ InputChunk Grain::specify(const Request &r, Grain &previous, SampleRates sampleR
 
 	{
 		auto halfInputFrameCount = inputResampled.frameCount / 2;
-		if (resampleOperationInput.ratio != 1.f)
-			halfInputFrameCount = int(std::round(halfInputFrameCount / resampleOperationInput.ratio)) + 1;
+		if (resampleOperations.input.ratio != 1.f)
+			halfInputFrameCount = int(std::round(halfInputFrameCount / resampleOperations.input.ratio)) + 1;
 		inputChunk.begin = int(std::round(request.position)) - halfInputFrameCount;
 		inputChunk.end = int(std::round(request.position)) + halfInputFrameCount;
 
@@ -132,14 +77,14 @@ InputChunk Grain::specify(const Request &r, Grain &previous, SampleRates sampleR
 
 Eigen::Ref<Eigen::ArrayXXf> Grain::resampleInput(Eigen::Ref<Eigen::ArrayXXf> input, int log2WindowLength)
 {
-	if (resampleOperationInput.function)
+	if (resampleOperations.input.function)
 	{
 		float offset = float(inputChunk.begin - request.position);
-		offset *= resampleOperationInput.ratio;
+		offset *= resampleOperations.input.ratio;
 		offset += 1 << (log2WindowLength - 1);
 		offset -= analysis.positionError;
 
-		resampleOperationInput.function(inputResampled, offset, input, resampleOperationInput.ratio, resampleOperationInput.ratio, false);
+		resampleOperations.input.function(inputResampled, offset, input, resampleOperations.input.ratio, resampleOperations.input.ratio, false);
 
 		return inputResampled.unpadded().topRows(inputResampled.frameCount);
 	}

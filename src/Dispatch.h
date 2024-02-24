@@ -14,12 +14,19 @@ struct Dispatch
 
 	std::array<FunctionPointer, n> table;
 
-	template <class T, int i = 0>
+	template <class T, int begin = 0, int end = n>
 	inline constexpr void populateTable()
 	{
-		table[i] = &T::template special<i>;
-		if constexpr (i + 1 < n)
-			populateTable<T, i + 1>();
+		if (end - begin == 1)
+		{
+			table[begin] = &T::template special<begin>;
+		}
+		else
+		{
+			constexpr auto middle = (begin + end) / 2;
+			populateTable<T, begin, middle>();
+			populateTable<T, middle, end>();
+		}
 	}
 
 	constexpr Dispatch()

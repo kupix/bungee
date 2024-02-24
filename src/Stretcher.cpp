@@ -28,6 +28,11 @@ void Stretcher::next(Request &request) const
 	state->next(request);
 }
 
+void Stretcher::preroll(Request &request) const
+{
+	state->preroll(request);
+}
+
 void Stretcher::analyseGrain(const float *data, intptr_t channelStride)
 {
 	state->analyseGrain(data, channelStride);
@@ -43,26 +48,14 @@ bool Stretcher::isFlushed() const
 	return state->grains.flushed();
 }
 
-void Stretcher::preroll(Request &request) const
-{
-	state->preroll(request);
-}
-
 Stretcher::Implementation::Implementation(SampleRates sampleRates, int channelCount) :
-	log2SynthesisHop(log2<true>(sampleRates.input) - 6),
-	sampleRates(sampleRates),
+	Timing(sampleRates),
 	input(log2SynthesisHop, channelCount),
 	grains(4),
-	output(log2SynthesisHop, channelCount, Output::maxFrameCount(log2SynthesisHop, sampleRates), 0.25f, {1.f, 0.5f})
+	output(log2SynthesisHop, channelCount, maxFrameCount(), 0.25f, {1.f, 0.5f})
 {
 	for (auto &grain : grains.vector)
 		grain = std::make_unique<Grain>(log2SynthesisHop, channelCount);
-}
-
-void Stretcher::Implementation::preroll(Request &request) const
-{
-	request.position -= 4. * Grain::calculateHop(log2SynthesisHop, sampleRates, request);
-	request.reset = true;
 }
 
 InputChunk Stretcher::Implementation::specifyGrain(const Request &request)
@@ -74,15 +67,6 @@ InputChunk Stretcher::Implementation::specifyGrain(const Request &request)
 	auto &grain = grains[0];
 	auto &previous = grains[1];
 	return grain.specify(request, previous, sampleRates, log2SynthesisHop);
-}
-
-void Stretcher::Implementation::next(Request &request) const
-{
-	if (!std::isnan(request.speed) && !std::isnan(request.position))
-	{
-		request.position += Grain::calculateHop(log2SynthesisHop, sampleRates, request);
-		request.reset = false;
-	}
 }
 
 void Stretcher::Implementation::analyseGrain(const float *data, std::ptrdiff_t stride)
@@ -101,7 +85,7 @@ void Stretcher::Implementation::analyseGrain(const float *data, std::ptrdiff_t s
 		Fourier::transforms.forward(log2TransformLength, input.windowedInput, grain.transformed);
 
 		const auto n = Fourier::binCount(grain.log2TransformLength) - 1;
-		grain.validBinCount = std::min<int>(std::ceil(n / grain.resampleOperationOutput.ratio), n) + 1;
+		grain.validBinCount = std::min<int>(std::ceil(n / grain.resampleOperations.output.ratio), n) + 1;
 		grain.transformed.middleRows(grain.validBinCount, n + 1 - grain.validBinCount).setZero();
 
 		grain.log2TransformLength = log2TransformLength;
@@ -151,8 +135,8 @@ void Stretcher::Implementation::synthesiseGrain(OutputChunk &outputChunk)
 
 	outputChunk = grains[3].segment.resample(
 		output.resampleOffset,
-		grains[2].resampleOperationOutput,
-		grains[1].resampleOperationOutput,
+		grains[2].resampleOperations.output,
+		grains[1].resampleOperations.output,
 		output.bufferResampled);
 
 	outputChunk.request[OutputChunk::begin] = &grains[2].request;
