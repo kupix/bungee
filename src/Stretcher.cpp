@@ -23,14 +23,19 @@ InputChunk Stretcher::specifyGrain(const Request &request)
 	return state->specifyGrain(request);
 }
 
-void Stretcher::next(Request &request) const
+int Stretcher::maxInputFrameCount() const
 {
-	state->next(request);
+	return state->maxInputFrameCount(true);
 }
 
 void Stretcher::preroll(Request &request) const
 {
 	state->preroll(request);
+}
+
+void Stretcher::next(Request &request) const
+{
+	state->next(request);
 }
 
 void Stretcher::analyseGrain(const float *data, intptr_t channelStride)
@@ -52,7 +57,7 @@ Stretcher::Implementation::Implementation(SampleRates sampleRates, int channelCo
 	Timing(sampleRates),
 	input(log2SynthesisHop, channelCount),
 	grains(4),
-	output(log2SynthesisHop, channelCount, maxFrameCount(), 0.25f, {1.f, 0.5f})
+	output(log2SynthesisHop, channelCount, maxOutputFrameCount(true), 0.25f, {1.f, 0.5f})
 {
 	for (auto &grain : grains.vector)
 		grain = std::make_unique<Grain>(log2SynthesisHop, channelCount);

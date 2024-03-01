@@ -43,6 +43,11 @@ struct InputChunk
 {
 	// Sample positions relative to the start of the audio track
 	int begin, end;
+
+	int frameCount() const
+	{
+		return end - begin;
+	}
 };
 
 // Describes a chunk of audio output
@@ -73,6 +78,11 @@ struct Stretcher
 	Stretcher(SampleRates sampleRates, int channelCount);
 
 	~Stretcher();
+
+	// Returns the largest number of frames that might be requested by specifyGrain()
+	// This helps the caller to allocate large enough buffers because it is guaranteed that
+	// InputChunk::frameCount() will not exceed this number.
+	int maxInputFrameCount() const;
 
 	// This function adjusts request.position so that the stretcher has a run in of a few
 	// grains before hitting the requested position. Without preroll, the first milliseconds

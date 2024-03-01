@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 #include "bungee/Bungee.h"
+#include "bungee/Push.h"
 
 #define CXXOPTS_NO_EXCEPTIONS
 #include "cxxopts.hpp"
@@ -43,6 +44,9 @@ struct Options :
 			("s,speed", "output speed as multiple of input speed", cxxopts::value<double>()->default_value("1")) //
 			("p,pitch", "output pitch shift in semitones", cxxopts::value<double>()->default_value("0")) //
 			;
+		add_options("Developer / Debug") //
+			("push", "input push chunk size (0 for default input pull operation)", cxxopts::value<int>()->default_value("0")) //
+			;
 		add_options(helpGroups.emplace_back("Help")) //
 			("h,help", "display this message") //
 			;
@@ -78,6 +82,9 @@ struct Parameters :
 		request.speed = (*this)["speed"].as<double>();
 		if (std::abs(request.speed) > 100.)
 			fail("speed must be between -100 and +100");
+
+		if ((*this)["push"].as<int>() && request.speed < 0.)
+			fail("when pushing speed must be positive");
 	}
 };
 
@@ -237,6 +244,14 @@ struct Processor
 			audio = &inputBuffer[inputChunk.begin];
 		}
 		return audio;
+	}
+
+	void getInputAudio(float *p, int stride, int position, int length) const
+	{
+		const float *source = getInputAudio(InputChunk{position, position + length});
+		for (int c = 0; c < channelCount; ++c)
+			for (int i = 0; i < length; ++i)
+				p[c * stride + i] = source[c * inputChannelStride + i];
 	}
 
 	template <typename Sample>

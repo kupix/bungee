@@ -22,18 +22,62 @@ int main(int argc, const char *argv[])
 	processor.restart(request);
 	stretcher.preroll(request);
 
-	for (bool done = false; !done;)
+	const int pushFrameCount = parameters["push"].as<int>();
+	if (pushFrameCount)
 	{
+		// This code exists only to demonstrate the usage of the Bungee stretcher with the Push::InputBuffer
+		// See the else part of the code for an example of the native "pull" API.
+
+		std::cout << "Using Push::InputBuffer with " << pushFrameCount << " frames per push\n";
+
 		InputChunk inputChunk = stretcher.specifyGrain(request);
 
-		stretcher.analyseGrain(processor.getInputAudio(inputChunk), processor.inputChannelStride);
+		Push::InputBuffer pushInputBuffer(stretcher.maxInputFrameCount() + pushFrameCount, processor.channelCount);
 
-		OutputChunk outputChunk;
-		stretcher.synthesiseGrain(outputChunk);
+		pushInputBuffer.grain(inputChunk);
 
-		stretcher.next(request);
+		bool done = false;
+		for (int position = 0; !done; position += pushFrameCount)
+		{
+			// Here we loop over segments of input audio, each with pushFrameCount audio frames.
 
-		done = processor.write(outputChunk);
+			// First get pushFrameCount frames of audio from the input
+			processor.getInputAudio(pushInputBuffer.inputData(), pushInputBuffer.stride(), position, pushFrameCount);
+
+			// The following function and loop delivers pushFrameCount to Bungee
+			// Zero or more output audio chunks will be emitted and we concatenate these.
+			pushInputBuffer.deliver(pushFrameCount);
+			while (pushInputBuffer.inputFrameCountRequired() <= 0)
+			{
+				stretcher.analyseGrain(pushInputBuffer.outputData(), pushInputBuffer.stride());
+
+				OutputChunk outputChunk;
+				stretcher.synthesiseGrain(outputChunk);
+
+				stretcher.next(request);
+				done = processor.write(outputChunk);
+
+				inputChunk = stretcher.specifyGrain(request);
+				pushInputBuffer.grain(inputChunk);
+			}
+		}
+	}
+	else
+	{
+		// Regular pull API
+
+		for (bool done = false; !done;)
+		{
+			InputChunk inputChunk = stretcher.specifyGrain(request);
+
+			stretcher.analyseGrain(processor.getInputAudio(inputChunk), processor.inputChannelStride);
+			OutputChunk outputChunk;
+			stretcher.synthesiseGrain(outputChunk);
+
+			stretcher.next(request);
+
+			done = processor.write(outputChunk);
+		}
 	}
 
 	processor.writeOutputFile();

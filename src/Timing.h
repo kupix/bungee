@@ -14,7 +14,8 @@ struct Timing
 
 	Timing(SampleRates sampleRates);
 
-	int maxFrameCount() const;
+	int maxInputFrameCount(bool mayDownsampleInput) const;
+	int maxOutputFrameCount(bool mayUpsampleOutput) const;
 
 	double calculateInputHop(const Request &request) const;
 

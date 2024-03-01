@@ -16,6 +16,7 @@ add_library(libbungee STATIC
   src/Input.cpp
   src/Output.cpp
   src/Partials.cpp
+  src/Push.cpp
   src/Resample.cpp
   src/Stretch.cpp
   src/Stretcher.cpp

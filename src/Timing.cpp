@@ -16,11 +16,20 @@ Timing::Timing(SampleRates sampleRates) :
 {
 }
 
-int Timing::maxFrameCount() const
+namespace {
+static constexpr auto maxPitchOctaves = 2;
+}
+
+int Timing::maxInputFrameCount(bool mayDownsampleInput) const
 {
-	static constexpr auto maxPitchOctaves = 2;
-	auto maxResample = (sampleRates.output << (maxPitchOctaves + log2SynthesisHop)) / sampleRates.input;
-	return maxResample + 1;
+	const auto max = (sampleRates.input << (maxPitchOctaves + log2SynthesisHop + 3)) / sampleRates.output;
+	return max + 1;
+}
+
+int Timing::maxOutputFrameCount(bool mayUpsampleOutput) const
+{
+	const auto max = (sampleRates.output << (maxPitchOctaves + log2SynthesisHop)) / sampleRates.input;
+	return max + 1;
 }
 
 double Timing::calculateInputHop(const Request &request) const
