@@ -52,3 +52,13 @@ target_include_directories(bungee PRIVATE submodules/cxxopts/include)
 target_link_libraries(bungee PRIVATE libbungee)
 
 target_include_directories(bungee PRIVATE submodules/cxxopts/include)
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bungee/
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/include/bungee
+    FILES_MATCHING PATTERN "*.h"
+)
+
+set(BUNGEE_ABI_NAME "abi" CACHE STRING "ABI name for binary files, e.g. windows-x86_64")
+
+install(TARGETS bungee RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${BUNGEE_ABI_NAME}/)
+install(TARGETS libbungee ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/${BUNGEE_ABI_NAME}/)

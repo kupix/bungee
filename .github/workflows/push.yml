@@ -1,9 +1,9 @@
-name: build
+name: push
 
 on:
   push:
     branches:
-      - main
+      - '*' 
 
 jobs:
   build:
@@ -14,20 +14,17 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 1
-          path: .
+          path: bungee
 
-      - name: 🛠️ Build
+      - name: 🛠️ Configure, build and install presets
         env:
-          CC: gcc-10
-          CXX: g++-10
           CMAKE_BUILD_PARALLEL_LEVEL: 2
-          BUILD_TYPES: Release Debug
+          PRESET: linux-x86_64
         run: |
-          for BUILD_TYPE in ${BUILD_TYPES}; do \
             cmake \
-              -S . \
-              -B build/${BUILD_TYPE} \
-              -DBUNGEE_SELF_TEST=2 \
-              -DCMAKE_BUILD_TYPE=${BUILD_TYPE}; \
-            cmake --build build/${BUILD_TYPE}; \
-          done
+              --preset ${PRESET} \
+              -S ${{github.workspace}}/bungee \
+              -B ${{github.workspace}}/builds/${PRESET} \
+              -G "Unix Makefiles"
+            cmake \
+              --build ${{github.workspace}}/builds/${PRESET}/

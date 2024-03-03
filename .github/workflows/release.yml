@@ -1,0 +1,75 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.*'
+
+jobs:
+  build_ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      
+      - name: 🛒 Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+          path: bungee
+      
+      - name: 🛠️ Configure, build and install presets
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 2
+          ANDROID_NDK: /usr/local/lib/android/sdk/ndk/26.2.11394342
+        run: |
+          for PRESET in \
+            linux-x86_64 \
+            android-armeabi-v7a \
+            android-arm64-v8a \
+            android-x86 \
+            android-x86_64 \
+            ; do
+            cmake \
+              --preset ${PRESET} \
+              -S ${{github.workspace}}/bungee \
+              -B ${{github.workspace}}/builds/${PRESET} \
+              -D BUNGEE_ABI_NAME=${PRESET} \
+              -D CMAKE_INSTALL_PREFIX=${{github.workspace}}/ubuntu/ \
+              -G "Unix Makefiles"
+            echo cmake --build --target install ${{github.workspace}}/builds/${PRESET}/
+            cmake \
+              --build ${{github.workspace}}/builds/${PRESET}/ \
+              --target install 
+          done
+      
+      - name: ✈️ Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-latest-install 
+          path: ${{github.workspace}}/ubuntu/
+          
+  build_ubuntu2:
+    runs-on: ubuntu-latest
+    needs: build_ubuntu
+    steps:
+
+    - name: 🪂 Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ubuntu-latest-install 
+        path: ${{github.workspace}}/ubuntu/
+
+    - name: 🗜️Prepare archive
+      run: |
+        mv ${{github.workspace}}/ubuntu ${{github.workspace}}/bungee-${{ github.ref_name }}
+        tar -czf ${{github.workspace}}/bungee-${{ github.ref_name }}.tgz -C ${{github.workspace}} bungee-${{ github.ref_name }}
+
+    - name: ⭐Create release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ github.ref_name }}" \
+            --repo="${{ github.repository }}" \
+            --title="${{ github.repository }} ${{ github.ref_name }}" \
+            --generate-notes \
+            ${{github.workspace}}/bungee-${{ github.ref_name }}.tgz

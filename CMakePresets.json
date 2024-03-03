@@ -1,0 +1,68 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 25,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUNGEE_SELF_TEST": "0",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/bungee/"
+            }
+        },
+        {
+            "name": "linux-x86_64",
+            "inherits": "base"
+        },
+        {
+            "name": "android",
+            "hidden": true,
+            "inherits": "base",
+            "toolchainFile": "$env{ANDROID_NDK}/build/cmake/android.toolchain.cmake",
+            "cacheVariables": {
+                "ANDROID_TOOLCHAIN": "clang",
+                "ANDROID_STL": "c++_static",
+                "BUILD_SHARED_LIBS": "false"
+            }
+        },
+        {
+            "name": "android-armeabi-v7a",
+            "inherits": "android",
+            "cacheVariables": {
+                "ANDROID_ABI": "armeabi-v7a",
+                "ANDROID_PLATFORM": "android-16"
+            }
+        },
+        {
+            "name": "android-arm64-v8a",
+            "inherits": "android",
+            "cacheVariables": {
+                "ANDROID_ABI": "x86_64",
+                "ANDROID_PLATFORM": "android-21"
+            }
+        },
+        {
+            "name": "android-x86",
+            "inherits": "android",
+            "cacheVariables": {
+                "ANDROID_ABI": "x86",
+                "ANDROID_PLATFORM": "android-16"
+            }
+        },
+        {
+            "name": "android-x86_64",
+            "inherits": "android",
+            "cacheVariables": {
+                "ANDROID_ABI": "x86_64",
+                "ANDROID_PLATFORM": "android-21"
+            }
+        }
+    ]
+}
