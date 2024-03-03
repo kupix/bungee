@@ -18,6 +18,20 @@
             }
         },
         {
+            "name": "windows-x86_64",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_SYSTEM_NAME": "Windows",
+                "CMAKE_C_COMPILER": "x86_64-w64-mingw32-gcc-posix",
+                "CMAKE_CXX_COMPILER": "x86_64-w64-mingw32-g++-posix",
+                "CMAKE_FIND_ROOT_PATH": "/usr/x86_64-w64-mingw32",
+                "CMAKE_FIND_ROOT_PATH_MODE_PROGRAM": "NEVER",
+                "CMAKE_FIND_ROOT_PATH_MODE_LIBRARY": "ONLY",
+                "CMAKE_FIND_ROOT_PATH_MODE_INCLUDE": "ONLY",
+                "CMAKE_CXX_FLAGS": "-static"
+            }
+        },
+        {
             "name": "linux-x86_64",
             "inherits": "base"
         },
