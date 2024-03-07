@@ -1,7 +1,7 @@
 
 ![actions workflow](https://github.com/kupix/bungee/actions/workflows/push.yml/badge.svg)
 
-# 🎵 Bungee 
+# 🎵 Bungee: Audio Time Stretch and Pitch Shift C++ Library
 
 Bungee is a real-time library for stretching audio. It can:
 * Adjust the playback speed of audio without affecting pitch
