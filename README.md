@@ -34,7 +34,7 @@ cmake ..
 cmake --build .
 ```
 
-After a succesful build, run the bungee executable
+After a successful build, run the bungee executable
 ```
 ./bungee --help
 ```
@@ -62,7 +62,7 @@ Bungee::Request request{};
 // Set pitch, this example shows an upward transposition of one semitone.
 request.pitch = std::pow(2., 1. / 12.);
 
-// Set intial speed, this example shows how to achieve constant 75% output speed.
+// Set initial speed, this example shows how to achieve constant 75% output speed.
 request.speed = 0.75;
 
 // Set initial starting position at 0.5 seconds offset from the start of the input buffer.
